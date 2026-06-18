@@ -1,38 +1,26 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { createClient } = require('@supabase/supabase-js');
-const GAMES = require('./games.json');
+
+if (!process.env.BOT_TOKEN ||!process.env.SUPABASE_URL ||!process.env.SUPABASE_KEY) {
+    console.error('ERROR: Missing ENV variables');
+    process.exit(1);
+}
 
 const token = process.env.BOT_TOKEN;
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
 const bot = new TelegramBot(token, {polling: true});
-const db = createClient(supabaseUrl, supabaseKey);
+const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// ===== اللهجات =====
-const DIALECTS = {
-    dz: {w: 'أهلا بيك يا وحش', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب', s: 'متجر'},
-    eg: {w: 'أهلا بيك يا نجم', e: 'طاقة', p: 'نقط', m: 'مهمات', g: 'ألعاب', s: 'متجر'},
-    sa: {w: 'حياك الله', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب', s: 'متجر'},
-    ma: {w: 'مرحبا بيك أصاط', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب', s: 'متجر'},
-    iq: {w: 'هلا بيك حبيبي', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب', s: 'متجر'},
-    default: {w: 'أهلا بيك', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب', s: 'متجر'}
-};
-const getD = (u) => {
-    const l = u?.language_code || 'ar';
-    if (l.includes('DZ')) return DIALECTS.dz;
-    if (l.includes('EG')) return DIALECTS.eg;
-    if (l.includes('SA')) return DIALECTS.sa;
-    if (l.includes('MA')) return DIALECTS.ma;
-    if (l.includes('IQ')) return DIALECTS.iq;
-    return DIALECTS.default;
-};
+const GAMES = require('./games.json');
+const ADMIN_ID = 8300457254; // ⚠️ حط ID تاعك هنا من @userinfobot
+const activeGames = {};
+const adminStates = {};
+const getD = () => ({w: 'أهلا بيك يا وحش', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب'});
 
-// ===== دوال مساعدة =====
-async function getUser(id, lang = 'ar') {
+async function getUser(id) {
     let {data} = await db.from('players').select().eq('id', id).single();
     if (!data) {
         const {data: n} = await db.from('players').insert({
-            id, points: 500, energy: 1000, max_energy: 1000, level: 1, total_points_earned: 500, lang
+            id, points: 500, energy: 1000, max_energy: 1000, level: 1, total_points_earned: 500
         }).select().single();
         return n;
     }
@@ -45,60 +33,103 @@ async function getUser(id, lang = 'ar') {
     return data;
 }
 
-async function checkSub(uid, ch) {
-    try {
-        const r = await bot.getChatMember(ch, uid);
-        return ['member', 'administrator', 'creator'].includes(r.status);
-    } catch { return false; }
-}
-
-async function canPlay(uid, gid) {
-    const g = GAMES.find(x => x.id === gid);
-    const u = await getUser(uid);
-    if (u.energy < g.energy) return {ok: false, msg: `طاقة ناقصة 💀 تحتاج ${g.energy}`};
-    const {data: l} = await db.from('game_cooldowns').select().eq('user_id', uid).eq('game_id', gid).single();
-    if (l) {
-        const diff = (Date.now() - new Date(l.last_played)) / 1000;
-        if (diff < g.cooldown) return {ok: false, msg: `استنى ${Math.ceil(g.cooldown - diff)}ث ⏳`};
-    }
-    return {ok: true, g, u};
-}
-
-// ===== القائمة =====
-function menu(id, txt = null, u = null) {
-    const d = getD(u);
+function menu(id, txt = null) {
+    const d = getD();
     const t = txt || `${d.w} في إمبراطورية Dandlioni 10A ♾️👊`;
-    bot.sendMessage(id, t, {
-        reply_markup: {
-            inline_keyboard: [
-                [{text: `🎮 50 ${d.g}`, callback_data: 'games'}, {text: `📜 25 ${d.m}`, callback_data: 'tasks'}],
-                [{text: '💎 بروفايلي', callback_data: 'me'}, {text: '🏆 التوب 10', callback_data: 'top'}],
-                [{text: '🚀 موّل قناتك مجانا', callback_data: 'add_channel'}],
-                [{text: `⚡ شحن ${d.e}`, callback_data: 'energy'}, {text: `🛒 ${d.s}`, callback_data: 'shop'}]
-            ]
-        }
-    });
+    let kb = [
+        [{text: `🎮 50 ${d.g} تفاعلية`, callback_data: 'games'}, {text: `📜 25 ${d.m}`, callback_data: 'tasks'}],
+        [{text: '💎 بروفايلي', callback_data: 'me'}, {text: '🏆 التوب', callback_data: 'top'}],
+        [{text: '🚀 موّل قناتك مجانا', callback_data: 'add_channel'}]
+    ];
+    if (id == ADMIN_ID) kb.push([{text: '👑 لوحة الأدمن Infinity', callback_data: 'admin_panel'}]);
+    bot.sendMessage(id, t, {reply_markup: {inline_keyboard: kb}});
 }
 
-// ===== Start =====
+async function adminPanel(chatId, msgId = null) {
+    const {count: userCount} = await db.from('players').select('*', {count: 'exact', head: true});
+    const {count: sponsorCount} = await db.from('sponsors').select('*', {count: 'exact', head: true});
+    const {data: topPlayer} = await db.from('players').select('points').order('points', {ascending: false}).limit(1).single();
+
+    const txt = `👑 **لوحة تحكم الإمبراطور Dandlioni 10A** ♾️\n\n📊 **إحصائيات:**\n👥 اللاعبين: ${userCount || 0}\n📢 القنوات: ${sponsorCount || 0}\n💎 أعلى رصيد: ${topPlayer?.points || 0}\n\n⚡ **التحكم:**`;
+    const kb = {inline_keyboard: [
+        [{text: '📢 إدارة القنوات', callback_data: 'admin_channels'}, {text: '👥 إدارة اللاعبين', callback_data: 'admin_users'}],
+        [{text: '💰 إضافة نقاط', callback_data: 'admin_addpoints'}, {text: '📢 إذاعة للكل', callback_data: 'admin_broadcast'}],
+        [{text: '🔙 رجوع للقائمة', callback_data: 'back'}]
+    ]};
+    if (msgId) bot.editMessageText(txt, {chat_id: chatId, message_id: msgId, parse_mode: 'Markdown', reply_markup: kb});
+    else bot.sendMessage(chatId, txt, {parse_mode: 'Markdown', reply_markup: kb});
+}
+
 bot.onText(/\/start/, async (msg) => {
-    const u = await getUser(msg.from.id, msg.from.language_code);
-    const d = getD(msg.from);
-    menu(msg.chat.id, `${d.w} ${msg.from.first_name} ♾️\n\n🎁 هدية: 500 ${d.p} + 1000 ${d.e}\n🎮 50 لعبة | 📜 25 مهمة = 17,500 ${d.p}\n🚀 أول 50 قناة تمويل مجاني`, u);
+    const u = await getUser(msg.from.id);
+    const d = getD();
+    menu(msg.chat.id, `${d.w} ${msg.from.first_name} ♾️\n\n🎁 هدية: 500 ${d.p} + 1000 ${d.e}\n🎮 50 لعبة تفاعلية | 📜 25 مهمة\n🚀 أول 50 قناة تمويل مجاني`);
 });
 
-// ===== Callbacks =====
+bot.onText(/\/admin/, async (msg) => {
+    if (msg.from.id!= ADMIN_ID) return bot.sendMessage(msg.chat.id, '❌ معندكش صلاحية 💀');
+    adminPanel(msg.chat.id);
+});
+
 bot.on('callback_query', async (q) => {
     const id = q.from.id;
     const data = q.data;
-    const u = await getUser(id, q.from.language_code);
-    const d = getD(q.from);
+    const u = await getUser(id);
+    const d = getD();
+    await bot.answerCallbackQuery(q.id);
+
+    if (data === 'admin_panel') {
+        if (id!= ADMIN_ID) return;
+        return adminPanel(q.message.chat.id, q.message.message_id);
+    }
+
+    if (data === 'admin_channels') {
+        if (id!= ADMIN_ID) return;
+        const {data: channels} = await db.from('sponsors').select().order('id', {ascending: true}).limit(20);
+        let txt = `📢 **إدارة القنوات** ♾️\n\n`;
+        if (!channels || channels.length === 0) txt += `❌ مكاش قنوات\n\n`;
+        else {
+            channels.forEach((c, i) => {
+                txt += `${i+1}. ${c.username}\nهدف: ${c.target_joins} | جاب: ${c.current_joins}\nID: \`${c.id}\`\n\n`;
+            });
+        }
+        txt += `⚡ **أوامر:**\n\`/delchannel ID\` - حذف\n\`/addchannel @user هدف\` - إضافة`;
+        bot.editMessageText(txt, {chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown',
+            reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'admin_panel'}]]}});
+    }
+
+    if (data === 'admin_users') {
+        if (id!= ADMIN_ID) return;
+        const {count} = await db.from('players').select('*', {count: 'exact', head: true});
+        const {data: top5} = await db.from('players').select('id,points').order('points', {ascending: false}).limit(5);
+        let txt = `👥 **إدارة اللاعبين** ♾️\n\n📊 العدد: ${count}\n\n🏆 **توب 5:**\n`;
+        top5.forEach((u, i) => { txt += `${i+1}. \`${u.id}\` - ${u.points} ${d.p}\n`; });
+        txt += `\n⚡ **أوامر:**\n\`/userinfo ID\`\n\`/addpoints ID مبلغ\``;
+        bot.editMessageText(txt, {chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown',
+            reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'admin_panel'}]]}});
+    }
+
+    if (data === 'admin_addpoints') {
+        if (id!= ADMIN_ID) return;
+        adminStates[id] = {action: 'addpoints'};
+        bot.editMessageText(`💰 **إضافة نقاط** ♾️\n\nابعت: \`ID مبلغ\`\nمثال: \`123456789 50000\``, {
+            chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown',
+            reply_markup: {inline_keyboard: [[{text: '❌ إلغاء', callback_data: 'admin_panel'}]]}});
+    }
+
+    if (data === 'admin_broadcast') {
+        if (id!= ADMIN_ID) return;
+        adminStates[id] = {action: 'broadcast'};
+        bot.editMessageText(`📢 **إذاعة جماعية** ♾️\n\nابعت الرسالة اللي حاب تبعثها للكل:`, {
+            chat_id: q.message.chat.id, message_id: q.message.message_id,
+            reply_markup: {inline_keyboard: [[{text: '❌ إلغاء', callback_data: 'admin_panel'}]]}});
+    }
 
     if (data === 'games') {
         const cats = ['ضغط','حظ','ذكاء','قتال','اقتصاد'];
         let kb = cats.map(c => [{text: `🎮 ${c}`, callback_data: `cat_${c}`}]);
         kb.push([{text: '🔙 رجوع', callback_data: 'back'}]);
-        bot.editMessageText(`اختر فئة | ${d.e}: ${u.energy}/1000 ♾️`, {
+        return bot.editMessageText(`اختر فئة | ${d.e}: ${u.energy}/${u.max_energy} ♾️`, {
             chat_id: q.message.chat.id, message_id: q.message.message_id,
             reply_markup: {inline_keyboard: kb}
         });
@@ -107,169 +138,170 @@ bot.on('callback_query', async (q) => {
     if (data.startsWith('cat_')) {
         const cat = data.split('_')[1];
         const games = GAMES.filter(g => g.category === cat);
-        let kb = games.map(g => [{text: `${g.name} ⚡${g.energy}`, callback_data: `play_${g.id}`}]);
+        let kb = games.map(g => [{text: `${g.name} - ${g.cost} ${d.e}`, callback_data: `start_${g.id}`}]);
         kb.push([{text: '🔙 رجوع', callback_data: 'games'}]);
-        bot.editMessageText(`ألعاب ${cat}:`, {
+        return bot.editMessageText(`ألعاب ${cat} | ${d.e}: ${u.energy} ♾️`, {
             chat_id: q.message.chat.id, message_id: q.message.message_id,
             reply_markup: {inline_keyboard: kb}
         });
     }
 
-    if (data.startsWith('play_')) {
-        const gid = parseInt(data.split('_')[1]);
-        const chk = await canPlay(id, gid);
-        if (!chk.ok) return bot.answerCallbackQuery(q.id, {text: chk.msg, show_alert: true});
-        const g = chk.g;
-        let won = 0;
-        if (g.reward.includes('-')) {
-            const [min, max] = g.reward.split('-').map(Number);
-            won = Math.floor(Math.random() * (max - min + 1)) + min;
-        } else if (g.reward.includes('x')) {
-            won = Math.floor(Math.random() * 100 * parseInt(g.reward.replace('x','')) || 2);
-        } else {
-            won = parseInt(g.reward) || 10;
+    if (data.startsWith('start_')) {
+        const gameId = parseInt(data.split('_')[1]);
+        const game = GAMES.find(g => g.id === gameId);
+        if (u.energy < game.cost) return bot.answerCallbackQuery(q.id, {text: `❌ طاقتك ناقصة!`, show_alert: true});
+        await db.from('players').update({energy: u.energy - game.cost}).eq('id', id);
+        const gameState = {gameId, msgId: q.message.message_id, chatId: q.message.chat.id, type: game.type};
+        activeGames[id] = gameState;
+
+        if (game.type === 'clicker') {
+            gameState.clicks = 0;
+            bot.editMessageText(`🔥 ${game.name} ♾️\n\nاضغط أكبر عدد في 5 ثواني!\nالضغطات: 0`, {
+                chat_id: q.message.chat.id, message_id: q.message.message_id,
+                reply_markup: {inline_keyboard: [[{text: '👊 اضغط!!!', callback_data: `click_${gameId}`}]]}
+            });
+            setTimeout(() => finishGame(id, game, gameState.clicks * game.reward), 5000);
         }
-        await db.from('players').update({
-            points: u.points + won,
-            energy: u.energy - g.energy,
-            total_points_earned: u.total_points_earned + won
-        }).eq('id', id);
-        await db.from('game_cooldowns').upsert({
-            user_id: id, game_id: gid, last_played: new Date().toISOString()
+        else if (game.type === 'rps') {
+            bot.editMessageText(`✂️ ${game.name} ♾️\n\nاختار سلاحك:`, {
+                chat_id: q.message.chat.id, message_id: q.message.message_id,
+                reply_markup: {inline_keyboard: [
+                    [{text: '🗿 حجر', callback_data: `rps_${gameId}_rock`}, {text: '📄 ورقة', callback_data: `rps_${gameId}_paper`}],
+                    [{text: '✂️ مقص', callback_data: `rps_${gameId}_scissors`}]
+                ]}
+            });
+        }
+        else if (game.type === 'quiz') {
+            let kb = game.opts.map(opt => [{text: opt, callback_data: `quiz_${gameId}_${opt}`}]);
+            bot.editMessageText(`🧠 ${game.name} ♾️\n\n${game.q}`, {
+                chat_id: q.message.chat.id, message_id: q.message.message_id,
+                reply_markup: {inline_keyboard: kb}
+            });
+        }
+        else if (game.type === 'choice') {
+            bot.editMessageText(`🎁 ${game.name} ♾️\n\nاختار صندوق:`, {
+                chat_id: q.message.chat.id, message_id: q.message.message_id,
+                reply_markup: {inline_keyboard: [
+                    [{text: '🎁 1', callback_data: `choice_${gameId}_1`}, {text: '🎁 2', callback_data: `choice_${gameId}_2`}],
+                    [{text: '🎁 3', callback_data: `choice_${gameId}_3`}]
+                ]}
+            });
+        }
+    }
+
+    if (data.startsWith('click_')) {
+        if (!activeGames[id]) return;
+        activeGames[id].clicks++;
+        bot.editMessageText(`🔥 ضغط مستمر ♾️\n\nالضغطات: ${activeGames[id].clicks} 👊`, {
+            chat_id: activeGames[id].chatId, message_id: activeGames[id].msgId,
+            reply_markup: {inline_keyboard: [[{text: `👊 اضغط! ${activeGames[id].clicks}`, callback_data: data}]]}
         });
-        bot.answerCallbackQuery(q.id, {text: `+${won} ${d.p} ♾️`});
-        menu(q.message.chat.id, `+${won} ${d.p} | ${d.e}: ${u.energy - g.energy}/1000`, u);
     }
 
-    if (data === 'tasks') {
-        const {data: sps} = await db.from('sponsors').select().eq('active', true).order('priority', {ascending: true}).limit(25);
-        let txt = `📜 ${d.m} ♾️ | كل قناة = 700 ${d.p}\nتكملهم = 17,500 ${d.p}\n\n`;
-        let kb = [];
-        let total = 0;
-        for (const s of sps) {
-            const sub = await checkSub(id, s.username);
-            const {data: cl} = await db.from('claimed_tasks').select().eq('user_id', id).eq('task', s.username).single();
-            const rw = s.tier === 'vip'? 1400 : 700;
-            const ic = s.tier === 'vip'? '🔥' : '📢';
-            if (!cl) total += rw;
-            txt += `${sub? '✅' : '❌'} ${ic} ${s.username}: +${rw} ${d.p}\n`;
-            if (!sub) kb.push([{text: `${ic} ${s.username}`, url: `https://t.me/${s.username.replace('@','')}`}]);
-        }
-        txt += `\n💰 ${d.p} متاحة: ${total}`;
-        kb.push([{text: '🎁 استلام', callback_data: 'claim_all_tasks'}]);
-        kb.push([{text: '🔙 رجوع', callback_data: 'back'}]);
-        bot.editMessageText(txt, {chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: {inline_keyboard: kb}});
+    if (data.startsWith('rps_')) {
+        const [_, gameId, userChoice] = data.split('_');
+        const game = GAMES.find(g => g.id == gameId);
+        const choices = ['rock', 'paper', 'scissors'];
+        const botChoice = choices[Math.floor(Math.random() * 3)];
+        const emojis = {rock: '🗿', paper: '📄', scissors: '✂️'};
+        let reward = 0, result = '';
+        if (userChoice === botChoice) { result = '🤝 تعادل'; reward = game.reward / 4; }
+        else if ((userChoice === 'rock' && botChoice === 'scissors') || (userChoice === 'paper' && botChoice === 'rock') || (userChoice === 'scissors' && botChoice === 'paper')) {
+            result = '🎉 ربحت'; reward = game.reward;
+        } else { result = '💀 خسرت'; reward = 0; }
+        finishGame(id, game, reward, `${result}\nانت: ${emojis[userChoice]} vs البوت: ${emojis[botChoice]}`);
     }
 
-    if (data === 'claim_all_tasks') {
-        const {data: sps} = await db.from('sponsors').select().eq('active', true).limit(25);
-        let total = 0, cnt = 0;
-        for (const s of sps) {
-            const sub = await checkSub(id, s.username);
-            const {data: cl} = await db.from('claimed_tasks').select().eq('user_id', id).eq('task', s.username).single();
-            const rw = s.tier === 'vip'? 1400 : 700;
-            if (sub &&!cl) {
-                await db.from('claimed_tasks').insert({user_id: id, task: s.username});
-                total += rw;
-                cnt++;
-                await db.from('sponsors').update({current_joins: s.current_joins + 1}).eq('id', s.id);
-            }
-        }
-        if (total > 0) {
-            await db.from('players').update({
-                points: u.points + total,
-                total_points_earned: u.total_points_earned + total
-            }).eq('id', id);
-            bot.answerCallbackQuery(q.id, {text: `استلمت ${total} ${d.p} من ${cnt} قنوات ♾️`});
-            menu(q.message.chat.id, `مبروك! +${total} ${d.p} 👊`, u);
-        } else {
-            bot.answerCallbackQuery(q.id, {text: 'اشترك أولا 💀', show_alert: true});
-        }
+    if (data.startsWith('quiz_')) {
+        const [_, gameId, answer] = data.split('_');
+        const game = GAMES.find(g => g.id == gameId);
+        const reward = answer === game.a? game.reward : 0;
+        const result = answer === game.a? '✅ صحيح' : `❌ خطأ! الجواب: ${game.a}`;
+        finishGame(id, game, reward, result);
     }
 
-    if (data === 'add_channel') {
-        const {count} = await db.from('sponsors').select('*', {count: 'exact'}).eq('is_free', true);
-        if (count >= 50) {
-            bot.answerCallbackQuery(q.id, {text: 'انتهى العرض المجاني 💀', show_alert: true});
-        } else {
-            bot.sendMessage(id, `🚀 العرض المجاني: باقي ${50-count} قناة\nأرسل @يوزر قناتك و نجيبولك 1000 عضو باطل ♾️`);
-        }
+    if (data.startsWith('choice_')) {
+        const [_, gameId, choice] = data.split('_');
+        const game = GAMES.find(g => g.id == gameId);
+        const winBox = Math.floor(Math.random() * 3) + 1;
+        const reward = choice == winBox? game.reward : 0;
+        const result = choice == winBox? `🎉 اخترت الصحيح!` : `💀 الفائز كان رقم ${winBox}`;
+        finishGame(id, game, reward, result);
     }
 
     if (data === 'me') {
-        const {data: rank} = await db.from('players').select('id').order('points', {ascending: false});
-        const myRank = rank.findIndex(r => r.id === id) + 1;
-        bot.editMessageText(`💎 بروفايلك ♾️\n\n👤 ${q.from.first_name}\n🏆 الترتيب: #${myRank}\n💰 ${d.p}: ${u.points}\n⚡ ${d.e}: ${u.energy}/1000\n📊 المستوى: ${u.level}\n🎮 مجموع ${d.p}: ${u.total_points_earned}`, {
+        return bot.editMessageText(`💎 بروفايلك ♾️\n\n👤 ${q.from.first_name}\n💰 ${d.p}: ${u.points}\n⚡ ${d.e}: ${u.energy}/${u.max_energy}\n📊 ليفل: ${u.level}`, {
             chat_id: q.message.chat.id, message_id: q.message.message_id,
             reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'back'}]]}
         });
     }
 
-    if (data === 'top') {
-        const {data: tops} = await db.from('players').select('id,points').order('points', {ascending: false}).limit(10);
-        let txt = `🏆 توب 10 أباطرة ♾️\n\n`;
-        for (let i = 0; i < tops.length; i++) {
-            try {
-                const chat = await bot.getChat(tops[i].id);
-                txt += `${i+1}. ${chat.first_name}: ${tops[i].points} ${d.p}\n`;
-            } catch { txt += `${i+1}. لاعب: ${tops[i].points} ${d.p}\n`; }
-        }
-        bot.editMessageText(txt, {chat_id: q.message.chat.id, message_id: q.message.message_id,
-            reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'back'}]]}
-        });
-    }
-
-    if (data === 'shop') {
-        bot.editMessageText(`🛒 ${d.s} الإمبراطورية ♾️\n\n1. طاقة لا نهائية 24سا - 2000 ${d.p}\n2. مضاعف x5 نقاط 12سا - 3000 ${d.p}\n3. لقب إمبراطور - 2500 ${d.p}\n4. فتح لعبة البوس - 3000 ${d.p}\n5. سكن ذهبي - 4000 ${d.p}\n\nرصيدك: ${u.points} ${d.p}`, {
-            chat_id: q.message.chat.id, message_id: q.message.message_id,
-            reply_markup: {inline_keyboard: [
-                [{text: '⚡ لا نهائي 24سا', callback_data: 'buy_energy_inf'}],
-                [{text: 'x5 نقاط', callback_data: 'buy_mult'}],
-                [{text: 'لقب إمبراطور', callback_data: 'buy_title'}],
-                [{text: '🔙 رجوع', callback_data: 'back'}]
-            ]}
-        });
-    }
-
-    if (data === 'energy') {
-        bot.editMessageText(`⚡ ${d.e}: ${u.energy}/1000\n\nتجدد 50 ${d.e} كل ساعة\nأو اشتري من المتجر:`, {
-            chat_id: q.message.chat.id, message_id: q.message.message_id,
-            reply_markup: {inline_keyboard: [
-                [{text: '+200 طاقة = 500 نقطة', callback_data: 'buy_e200'}],
-                [{text: '+1000 طاقة = 2000 نقطة', callback_data: 'buy_e1000'}],
-                [{text: '🔙 رجوع', callback_data: 'back'}]
-            ]}
-        });
-    }
-
-    if (data === 'buy_e200' && u.points >= 500) {
-        await db.from('players').update({points: u.points - 500, energy: Math.min(1000, u.energy + 200)}).eq('id', id);
-        bot.answerCallbackQuery(q.id, {text: '+200 طاقة ♾️'});
-        menu(q.message.chat.id, `${d.e}: ${Math.min(1000, u.energy + 200)}/1000`, u);
-    }
-
-    if (data === 'buy_e1000' && u.points >= 2000) {
-        await db.from('players').update({points: u.points - 2000, energy: 1000}).eq('id', id);
-        bot.answerCallbackQuery(q.id, {text: 'طاقة كاملة ♾️'});
-        menu(q.message.chat.id, `${d.e}: 1000/1000`, u);
-    }
-
-    if (data === 'back') menu(q.message.chat.id, null, u);
+    if (data === 'back') menu(q.message.chat.id);
 });
 
-// استقبال قنوات
 bot.on('message', async (msg) => {
-    if (msg.text && msg.text.startsWith('@') &&!msg.text.includes(' ')) {
-        const {count} = await db.from('sponsors').select('*', {count: 'exact'}).eq('is_free', true);
-        if (count < 50) {
-            await db.from('sponsors').insert({
-                username: msg.text, owner_id: msg.from.id,
-                tier: 'free', priority: 50, is_free: true,
-                target_joins: 1000, points_price: 0
-            });
-            bot.sendMessage(msg.chat.id, `🔥🔥 تم قبول ${msg.text} مجانا ♾️\nضمن أول 50 قناة\n1000 عضو جايينك 🚀`);
+    if (msg.from.id!= ADMIN_ID ||!adminStates[msg.from.id] || msg.text.startsWith('/')) return;
+    const state = adminStates[msg.from.id];
+    const d = getD();
+
+    if (state.action === 'addpoints') {
+        const [userId, amount] = msg.text.split(' ');
+        if (!userId ||!amount || isNaN(amount)) return bot.sendMessage(msg.chat.id, '❌ صيغة غالطة. استعمل: `ID مبلغ`');
+        await db.from('players').update({points: db.raw(`points + ${amount}`)}).eq('id', userId);
+        bot.sendMessage(msg.chat.id, `✅ زدت ${amount} ${d.p} للاعب \`${userId}\` ♾️`, {parse_mode: 'Markdown'});
+        delete adminStates[msg.from.id];
+    }
+
+    if (state.action === 'broadcast') {
+        const {data: users} = await db.from('players').select('id').limit(1000);
+        let sent = 0;
+        for (const u of users) {
+            try { await bot.sendMessage(u.id, `📢 **إعلان إمبراطوري** ♾️\n\n${msg.text}`, {parse_mode: 'Markdown'}); sent++; } catch(e){}
         }
+        bot.sendMessage(msg.chat.id, `✅ تم الإرسال لـ ${sent}/${users.length} لاعب ♾️`);
+        delete adminStates[msg.from.id];
     }
 });
 
-console.log('Dandlioni 10A Infinity V5 شغال ♾️👊');
+bot.onText(/\/delchannel (\d+)/, async (msg, match) => {
+    if (msg.from.id!= ADMIN_ID) return;
+    await db.from('sponsors').delete().eq('id', match[1]);
+    bot.sendMessage(msg.chat.id, `✅ تم حذف القناة رقم ${match[1]} ♾️`);
+});
+
+bot.onText(/\/addchannel (@\w+) (\d+)/, async (msg, match) => {
+    if (msg.from.id!= ADMIN_ID) return;
+    await db.from('sponsors').insert({username: match[1], tier: 'vip', priority: 1, target_joins: parseInt(match[2]), current_joins: 0});
+    bot.sendMessage(msg.chat.id, `✅ تم إضافة ${match[1]} بهدف ${match[2]} عضو ♾️`);
+});
+
+bot.onText(/\/userinfo (\d+)/, async (msg, match) => {
+    if (msg.from.id!= ADMIN_ID) return;
+    const {data: user} = await db.from('players').select().eq('id', match[1]).single();
+    if (!user) return bot.sendMessage(msg.chat.id, '❌ لاعب غير موجود');
+    const d = getD();
+    bot.sendMessage(msg.chat.id, `👤 **معلومات اللاعب** ♾️\n\n🆔 ID: \`${user.id}\`\n💰 ${d.p}: ${user.points}\n⚡ ${d.e}: ${user.energy}/${user.max_energy}\n📊 ليفل: ${user.level}`, {parse_mode: 'Markdown'});
+});
+
+async function finishGame(userId, game, reward, customMsg = '') {
+    if (reward > 0) {
+        await db.from('players').update({
+            points: db.raw(`points + ${reward}`),
+            total_points_earned: db.raw(`total_points_earned + ${reward}`)
+        }).eq('id', userId);
+    }
+    const u = await getUser(userId);
+    const gameState = activeGames[userId];
+    delete activeGames[userId];
+    const msg = customMsg || `🎉 ربحت ${reward} ${getD().p}!`;
+    bot.editMessageText(`${msg}\n\n💎 رصيدك: ${u.points} ${getD().p}\n⚡ طاقتك: ${u.energy}/${u.max_energy}\n\n🔥 ♾️`, {
+        chat_id: gameState.chatId, message_id: gameState.msgId,
+        reply_markup: {inline_keyboard: [
+            [{text: '🔄 العب مرة اخرى', callback_data: `start_${game.id}`}],
+            [{text: '🎮 ألعاب اخرى', callback_data: `cat_${game.category}`}],
+            [{text: '🏠 القائمة', callback_data: 'back'}]
+        ]}
+    });
+}
+
+console.log('Dandlioni 10A Infinity + Admin Panel شغال ♾️👊');
