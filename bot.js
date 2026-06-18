@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const { createClient } = require('@supabase/supabase-js');
+const express = require('express');
 
 if (!process.env.BOT_TOKEN ||!process.env.SUPABASE_URL ||!process.env.SUPABASE_KEY) {
     console.error('ERROR: Missing ENV variables');
@@ -10,8 +11,14 @@ const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, {polling: true});
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// 🔥 سيرفر باه ريندر ما يرقدش
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Dandlioni 10A Infinity شغال ♾️👊'));
+app.listen(PORT, () => console.log(`Server شغال على بورت ${PORT}`));
+
 const GAMES = require('./games.json');
-const ADMIN_ID = 8300457254; // ⚠️ حط ID تاعك هنا من @userinfobot
+const ADMIN_ID = 8300457254; // ⚠️ حط ID تاعك من @userinfobot
 const activeGames = {};
 const adminStates = {};
 const getD = () => ({w: 'أهلا بيك يا وحش', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب'});
@@ -60,6 +67,27 @@ async function adminPanel(chatId, msgId = null) {
     else bot.sendMessage(chatId, txt, {parse_mode: 'Markdown', reply_markup: kb});
 }
 
+async function finishGame(userId, game, reward, customMsg = '') {
+    if (reward > 0) {
+        await db.from('players').update({
+            points: db.raw(`points + ${reward}`),
+            total_points_earned: db.raw(`total_points_earned + ${reward}`)
+        }).eq('id', userId);
+    }
+    const u = await getUser(userId);
+    const gameState = activeGames[userId];
+    delete activeGames[userId];
+    const msg = customMsg || `🎉 ربحت ${reward} ${getD().p}!`;
+    bot.editMessageText(`${msg}\n\n💎 رصيدك: ${u.points} ${getD().p}\n⚡ طاقتك: ${u.energy}/${u.max_energy}\n\n🔥 ♾️`, {
+        chat_id: gameState.chatId, message_id: gameState.msgId,
+        reply_markup: {inline_keyboard: [
+            [{text: '🔄 العب مرة اخرى', callback_data: `start_${game.id}`}],
+            [{text: '🎮 ألعاب اخرى', callback_data: `cat_${game.category}`}],
+            [{text: '🏠 القائمة', callback_data: 'back'}]
+        ]}
+    });
+}
+
 bot.onText(/\/start/, async (msg) => {
     const u = await getUser(msg.from.id);
     const d = getD();
@@ -78,6 +106,7 @@ bot.on('callback_query', async (q) => {
     const d = getD();
     await bot.answerCallbackQuery(q.id);
 
+    // لوحة الأدمن
     if (data === 'admin_panel') {
         if (id!= ADMIN_ID) return;
         return adminPanel(q.message.chat.id, q.message.message_id);
@@ -125,6 +154,7 @@ bot.on('callback_query', async (q) => {
             reply_markup: {inline_keyboard: [[{text: '❌ إلغاء', callback_data: 'admin_panel'}]]}});
     }
 
+    // الألعاب
     if (data === 'games') {
         const cats = ['ضغط','حظ','ذكاء','قتال','اقتصاد'];
         let kb = cats.map(c => [{text: `🎮 ${c}`, callback_data: `cat_${c}`}]);
@@ -205,7 +235,7 @@ bot.on('callback_query', async (q) => {
         const botChoice = choices[Math.floor(Math.random() * 3)];
         const emojis = {rock: '🗿', paper: '📄', scissors: '✂️'};
         let reward = 0, result = '';
-        if (userChoice === botChoice) { result = '🤝 تعادل'; reward = game.reward / 4; }
+        if (userChoice === botChoice) { result = '🤝 تعادل'; reward = Math.floor(game.reward / 4); }
         else if ((userChoice === 'rock' && botChoice === 'scissors') || (userChoice === 'paper' && botChoice === 'rock') || (userChoice === 'scissors' && botChoice === 'paper')) {
             result = '🎉 ربحت'; reward = game.reward;
         } else { result = '💀 خسرت'; reward = 0; }
@@ -236,9 +266,18 @@ bot.on('callback_query', async (q) => {
         });
     }
 
+    if (data === 'top') {
+        const {data: top} = await db.from('players').select('id,points').order('points', {ascending: false}).limit(10);
+        let txt = `🏆 **توب 10 إمبراطورية Dandlioni** ♾️\n\n`;
+        top.forEach((p, i) => { txt += `${i+1}. \`${p.id}\` - ${p.points} ${d.p}\n`; });
+        bot.editMessageText(txt, {chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: 'Markdown',
+            reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'back'}]]}});
+    }
+
     if (data === 'back') menu(q.message.chat.id);
 });
 
+// رسائل الأدمن
 bot.on('message', async (msg) => {
     if (msg.from.id!= ADMIN_ID ||!adminStates[msg.from.id] || msg.text.startsWith('/')) return;
     const state = adminStates[msg.from.id];
@@ -263,6 +302,7 @@ bot.on('message', async (msg) => {
     }
 });
 
+// أوامر الأدمن السريعة
 bot.onText(/\/delchannel (\d+)/, async (msg, match) => {
     if (msg.from.id!= ADMIN_ID) return;
     await db.from('sponsors').delete().eq('id', match[1]);
@@ -283,25 +323,11 @@ bot.onText(/\/userinfo (\d+)/, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `👤 **معلومات اللاعب** ♾️\n\n🆔 ID: \`${user.id}\`\n💰 ${d.p}: ${user.points}\n⚡ ${d.e}: ${user.energy}/${user.max_energy}\n📊 ليفل: ${user.level}`, {parse_mode: 'Markdown'});
 });
 
-async function finishGame(userId, game, reward, customMsg = '') {
-    if (reward > 0) {
-        await db.from('players').update({
-            points: db.raw(`points + ${reward}`),
-            total_points_earned: db.raw(`total_points_earned + ${reward}`)
-        }).eq('id', userId);
-    }
-    const u = await getUser(userId);
-    const gameState = activeGames[userId];
-    delete activeGames[userId];
-    const msg = customMsg || `🎉 ربحت ${reward} ${getD().p}!`;
-    bot.editMessageText(`${msg}\n\n💎 رصيدك: ${u.points} ${getD().p}\n⚡ طاقتك: ${u.energy}/${u.max_energy}\n\n🔥 ♾️`, {
-        chat_id: gameState.chatId, message_id: gameState.msgId,
-        reply_markup: {inline_keyboard: [
-            [{text: '🔄 العب مرة اخرى', callback_data: `start_${game.id}`}],
-            [{text: '🎮 ألعاب اخرى', callback_data: `cat_${game.category}`}],
-            [{text: '🏠 القائمة', callback_data: 'back'}]
-        ]}
-    });
-}
+bot.onText(/\/addpoints (\d+) (\d+)/, async (msg, match) => {
+    if (msg.from.id!= ADMIN_ID) return;
+    const userId = match[1], amount = parseInt(match[2]);
+    await db.from('players').update({points: db.raw(`points + ${amount}`)}).eq('id', userId);
+    bot.sendMessage(msg.chat.id, `✅ زدت ${amount} نقطة للاعب ${userId} ♾️`);
+});
 
-console.log('Dandlioni 10A Infinity + Admin Panel شغال ♾️👊');
+console.log('Dandlioni 10A Infinity + Keep Alive شغال ♾️👊');
