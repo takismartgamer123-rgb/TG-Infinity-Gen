@@ -2,8 +2,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const { createClient } = require('@supabase/supabase-js');
 const express = require('express');
 
+// 🔥 ضد الموت - تحقق من ENV
 if (!process.env.BOT_TOKEN ||!process.env.SUPABASE_URL ||!process.env.SUPABASE_KEY) {
-    console.error('ERROR: Missing ENV variables');
+    console.error('ERROR: Missing ENV variables - Bot Dead 💀');
     process.exit(1);
 }
 
@@ -11,11 +12,15 @@ const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, {polling: true});
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// 🔥 سيرفر باه ريندر ما يرقدش
+// 🔥 ضد ريندر - سيرفر خالد
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Dandlioni 10A Infinity شغال ♾️👊'));
-app.listen(PORT, () => console.log(`Server شغال على بورت ${PORT}`));
+app.get('/', (req, res) => res.send('Dandlioni 10A Immortal ♾️👊'));
+app.get('/health', (req, res) => res.status(200).json({status: 'alive', timestamp: Date.now()}));
+app.listen(PORT, () => console.log(`🔥 Immortal Server شغال على بورت ${PORT}`));
+
+// 🔥 ضد 409 Conflict - اقتل النسخ القديمة
+bot.deleteWebHook().then(() => console.log('Webhook murdered 💀'));
 
 const GAMES = require('./games.json');
 const ADMIN_ID = 8300457254; // ⚠️ حط ID تاعك من @userinfobot
@@ -23,18 +28,37 @@ const activeGames = {};
 const adminStates = {};
 const getD = () => ({w: 'أهلا بيك يا وحش', e: 'طاقة', p: 'نقاط', m: 'مهام', g: 'ألعاب'});
 
+// 🔥 ضد الزومبي - إحياء اللاعبين الميتين
 async function getUser(id) {
     let {data} = await db.from('players').select().eq('id', id).single();
+
     if (!data) {
         const {data: n} = await db.from('players').insert({
-            id, points: 500, energy: 1000, max_energy: 1000, level: 1, total_points_earned: 500
+            id,
+            points: 500,
+            energy: 1000,
+            max_energy: 1000,
+            level: 1,
+            total_points_earned: 500,
+            last_energy_update: new Date().toISOString()
         }).select().single();
         return n;
     }
+
+    // تصليح الجثث - null = 1000
+    data.energy = data.energy?? data.max_energy?? 1000;
+    data.max_energy = data.max_energy?? 1000;
+    data.last_energy_update = data.last_energy_update?? new Date().toISOString();
+
+    // تجديد الطاقة بالوقت
     const hours = Math.floor((Date.now() - new Date(data.last_energy_update)) / 3600000);
     if (hours > 0) {
         const newE = Math.min(data.max_energy, data.energy + hours * 50);
-        await db.from('players').update({energy: newE, last_energy_update: new Date().toISOString()}).eq('id', id);
+        await db.from('players').update({
+            energy: newE,
+            max_energy: data.max_energy,
+            last_energy_update: new Date().toISOString()
+        }).eq('id', id);
         data.energy = newE;
     }
     return data;
@@ -48,7 +72,7 @@ function menu(id, txt = null) {
         [{text: '💎 بروفايلي', callback_data: 'me'}, {text: '🏆 التوب', callback_data: 'top'}],
         [{text: '🚀 موّل قناتك مجانا', callback_data: 'add_channel'}]
     ];
-    if (id == ADMIN_ID) kb.push([{text: '👑 لوحة الأدمن Infinity', callback_data: 'admin_panel'}]);
+    if (id == ADMIN_ID) kb.push([{text: '👑 لوحة الأدمن Immortal', callback_data: 'admin_panel'}]);
     bot.sendMessage(id, t, {reply_markup: {inline_keyboard: kb}});
 }
 
@@ -57,10 +81,11 @@ async function adminPanel(chatId, msgId = null) {
     const {count: sponsorCount} = await db.from('sponsors').select('*', {count: 'exact', head: true});
     const {data: topPlayer} = await db.from('players').select('points').order('points', {ascending: false}).limit(1).single();
 
-    const txt = `👑 **لوحة تحكم الإمبراطور Dandlioni 10A** ♾️\n\n📊 **إحصائيات:**\n👥 اللاعبين: ${userCount || 0}\n📢 القنوات: ${sponsorCount || 0}\n💎 أعلى رصيد: ${topPlayer?.points || 0}\n\n⚡ **التحكم:**`;
+    const txt = `👑 **لوحة تحكم الإمبراطور الخالد** ♾️\n\n📊 **إحصائيات:**\n👥 اللاعبين: ${userCount || 0}\n📢 القنوات: ${sponsorCount || 0}\n💎 أعلى رصيد: ${topPlayer?.points || 0}\n\n⚡ **التحكم:**`;
     const kb = {inline_keyboard: [
         [{text: '📢 إدارة القنوات', callback_data: 'admin_channels'}, {text: '👥 إدارة اللاعبين', callback_data: 'admin_users'}],
         [{text: '💰 إضافة نقاط', callback_data: 'admin_addpoints'}, {text: '📢 إذاعة للكل', callback_data: 'admin_broadcast'}],
+        [{text: '🧟 إحياء كل الزومبي', callback_data: 'admin_revive'}],
         [{text: '🔙 رجوع للقائمة', callback_data: 'back'}]
     ]};
     if (msgId) bot.editMessageText(txt, {chat_id: chatId, message_id: msgId, parse_mode: 'Markdown', reply_markup: kb});
@@ -85,7 +110,7 @@ async function finishGame(userId, game, reward, customMsg = '') {
             [{text: '🎮 ألعاب اخرى', callback_data: `cat_${game.category}`}],
             [{text: '🏠 القائمة', callback_data: 'back'}]
         ]}
-    });
+    }).catch(()=>{});
 }
 
 bot.onText(/\/start/, async (msg) => {
@@ -104,12 +129,23 @@ bot.on('callback_query', async (q) => {
     const data = q.data;
     const u = await getUser(id);
     const d = getD();
-    await bot.answerCallbackQuery(q.id);
+    await bot.answerCallbackQuery(q.id).catch(()=>{});
 
-    // لوحة الأدمن
     if (data === 'admin_panel') {
         if (id!= ADMIN_ID) return;
         return adminPanel(q.message.chat.id, q.message.message_id);
+    }
+
+    if (data === 'admin_revive') {
+        if (id!= ADMIN_ID) return;
+        await db.from('players').update({
+            energy: 1000,
+            max_energy: 1000,
+            last_energy_update: new Date().toISOString()
+        }).or('energy.is.null,energy.lt.100');
+        bot.editMessageText(`🧟✅ تم إحياء كل الزومبي! الطاقة 1000/1000 للكل ♾️`, {
+            chat_id: q.message.chat.id, message_id: q.message.message_id,
+            reply_markup: {inline_keyboard: [[{text: '🔙 رجوع', callback_data: 'admin_panel'}]]}});
     }
 
     if (data === 'admin_channels') {
@@ -154,7 +190,6 @@ bot.on('callback_query', async (q) => {
             reply_markup: {inline_keyboard: [[{text: '❌ إلغاء', callback_data: 'admin_panel'}]]}});
     }
 
-    // الألعاب
     if (data === 'games') {
         const cats = ['ضغط','حظ','ذكاء','قتال','اقتصاد'];
         let kb = cats.map(c => [{text: `🎮 ${c}`, callback_data: `cat_${c}`}]);
@@ -179,18 +214,22 @@ bot.on('callback_query', async (q) => {
     if (data.startsWith('start_')) {
         const gameId = parseInt(data.split('_')[1]);
         const game = GAMES.find(g => g.id === gameId);
-        if (u.energy < game.cost) return bot.answerCallbackQuery(q.id, {text: `❌ طاقتك ناقصة!`, show_alert: true});
+        if (!game) return;
+        if (u.energy < game.cost) return bot.answerCallbackQuery(q.id, {text: `❌ طاقتك ناقصة! تحتاج ${game.cost}`, show_alert: true});
         await db.from('players').update({energy: u.energy - game.cost}).eq('id', id);
         const gameState = {gameId, msgId: q.message.message_id, chatId: q.message.chat.id, type: game.type};
         activeGames[id] = gameState;
 
         if (game.type === 'clicker') {
             gameState.clicks = 0;
+            gameState.startTime = Date.now();
             bot.editMessageText(`🔥 ${game.name} ♾️\n\nاضغط أكبر عدد في 5 ثواني!\nالضغطات: 0`, {
                 chat_id: q.message.chat.id, message_id: q.message.message_id,
                 reply_markup: {inline_keyboard: [[{text: '👊 اضغط!!!', callback_data: `click_${gameId}`}]]}
             });
-            setTimeout(() => finishGame(id, game, gameState.clicks * game.reward), 5000);
+            setTimeout(() => {
+                if (activeGames[id]) finishGame(id, game, gameState.clicks * game.reward);
+            }, 5000);
         }
         else if (game.type === 'rps') {
             bot.editMessageText(`✂️ ${game.name} ♾️\n\nاختار سلاحك:`, {
@@ -220,12 +259,12 @@ bot.on('callback_query', async (q) => {
     }
 
     if (data.startsWith('click_')) {
-        if (!activeGames[id]) return;
+        if (!activeGames[id] || Date.now() - activeGames[id].startTime > 5000) return;
         activeGames[id].clicks++;
-        bot.editMessageText(`🔥 ضغط مستمر ♾️\n\nالضغطات: ${activeGames[id].clicks} 👊`, {
+        bot.editMessageText(`🔥 ضغط مستمر ♾️\n\nالضغطات: ${activeGames[id].clicks} 👊\nالوقت: ${5 - Math.floor((Date.now() - activeGames[id].startTime) / 1000)}ث`, {
             chat_id: activeGames[id].chatId, message_id: activeGames[id].msgId,
             reply_markup: {inline_keyboard: [[{text: `👊 اضغط! ${activeGames[id].clicks}`, callback_data: data}]]}
-        });
+        }).catch(()=>{});
     }
 
     if (data.startsWith('rps_')) {
@@ -277,7 +316,6 @@ bot.on('callback_query', async (q) => {
     if (data === 'back') menu(q.message.chat.id);
 });
 
-// رسائل الأدمن
 bot.on('message', async (msg) => {
     if (msg.from.id!= ADMIN_ID ||!adminStates[msg.from.id] || msg.text.startsWith('/')) return;
     const state = adminStates[msg.from.id];
@@ -302,7 +340,6 @@ bot.on('message', async (msg) => {
     }
 });
 
-// أوامر الأدمن السريعة
 bot.onText(/\/delchannel (\d+)/, async (msg, match) => {
     if (msg.from.id!= ADMIN_ID) return;
     await db.from('sponsors').delete().eq('id', match[1]);
@@ -330,4 +367,18 @@ bot.onText(/\/addpoints (\d+) (\d+)/, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `✅ زدت ${amount} نقطة للاعب ${userId} ♾️`);
 });
 
-console.log('Dandlioni 10A Infinity + Keep Alive شغال ♾️👊');
+bot.onText(/\/revive/, async (msg) => {
+    if (msg.from.id!= ADMIN_ID) return;
+    await db.from('players').update({
+        energy: 1000,
+        max_energy: 1000,
+        last_energy_update: new Date().toISOString()
+    }).or('energy.is.null,energy.lt.100');
+    bot.sendMessage(msg.chat.id, '🧟✅ تم إحياء كل الزومبي! الطاقة 1000/1000 للكل ♾️');
+});
+
+// 🔥 ضد الأخطاء - ما يموتش
+process.on('uncaughtException', (err) => console.error('Caught exception:', err));
+process.on('unhandledRejection', (err) => console.error('Caught rejection:', err));
+
+console.log('Dandlioni 10A Immortal شغال ضد الموت ضد الزومبي ♾️👊');
