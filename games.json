@@ -1,56 +1,432 @@
 [
-  {"id":1,"name":"ضغط المكوك","category":"ضغط","type":"clicker","cost":5,"reward":10,"time":5},
-  {"id":2,"name":"مطرقة الرعد","category":"ضغط","type":"clicker","cost":10,"reward":15,"time":7},
-  {"id":3,"name":"كسر الصخر","category":"ضغط","type":"clicker","cost":15,"reward":20,"time":6},
-  {"id":4,"name":"ضغط الزعيم","category":"ضغط","type":"boss_clicker","cost":20,"reward":50,"hp":50,"time":10},
-  {"id":5,"name":"تحدي السرعة","category":"ضغط","type":"clicker","cost":8,"reward":12,"time":4},
-  {"id":6,"name":"قبضة فولاذية","category":"ضغط","type":"hold","cost":12,"reward":30,"target":3},
-  {"id":7,"name":"الضغط النووي","category":"ضغط","type":"clicker","cost":25,"reward":40,"time":8},
-  {"id":8,"name":"زلزال الضغط","category":"ضغط","type":"clicker","cost":18,"reward":25,"time":6},
-  {"id":9,"name":"مكوك الإمبراطور","category":"ضغط","type":"boss_clicker","cost":30,"reward":100,"hp":100,"time":15},
-  {"id":10,"name":"قبضة Infinity","category":"ضغط","type":"hold","cost":20,"reward":60,"target":5},
-
-  {"id":11,"name":"حجر ورقة مقص","category":"حظ","type":"rps","cost":10,"reward":100},
-  {"id":12,"name":"روليت الحظ","category":"حظ","type":"wheel","cost":15,"reward":200},
-  {"id":13,"name":"الصندوق الغامض","category":"حظ","type":"choice","cost":20,"reward":300,"choices":3},
-  {"id":14,"name":"عملة الحظ","category":"حظ","type":"coin","cost":5,"reward":50},
-  {"id":15,"name":"نرد الإمبراطور","category":"حظ","type":"dice","cost":12,"reward":150,"target":6},
-  {"id":16,"name":"عجلة Infinity","category":"حظ","type":"wheel","cost":25,"reward":500},
-  {"id":17,"name":"3 صناديق ذهب","category":"حظ","type":"choice","cost":30,"reward":400,"choices":3},
-  {"id":18,"name":"حظ الملوك","category":"حظ","type":"dice","cost":20,"reward":250,"target":5},
-  {"id":19,"name":"عملة ×2","category":"حظ","type":"coin","cost":10,"reward":100},
-  {"id":20,"name":"روليت الموت","category":"حظ","type":"wheel","cost":50,"reward":1000},
-
-  {"id":21,"name":"سؤال سرعة","category":"ذكاء","type":"quiz","cost":5,"reward":50,"q":"5+5*2=?","a":"15","opts":["10","15","20","25"]},
-  {"id":22,"name":"لغز الأرقام","category":"ذكاء","type":"math","cost":10,"reward":80,"q":"التالي: 2,4,8,16,?","a":"32"},
-  {"id":23,"name":"ذاكرة فولاذية","category":"ذكاء","type":"memory","cost":15,"reward":120,"seq":["🔴","🔵","🟢","🟡"]},
-  {"id":24,"name":"عاصمة الجزائر؟","category":"ذكاء","type":"quiz","cost":8,"reward":60,"q":"ما هي عاصمة الجزائر؟","a":"الجزائر","opts":["وهران","قسنطينة","الجزائر","عنابة"]},
-  {"id":25,"name":"ترتيب سريع","category":"ذكاء","type":"order","cost":12,"reward":100,"seq":["1","2","3","4"]},
-  {"id":26,"name":"معادلة نار","category":"ذكاء","type":"math","cost":15,"reward":150,"q":"12*12=?","a":"144"},
-  {"id":27,"name":"ذاكرة الإمبراطور","category":"ذكاء","type":"memory","cost":20,"reward":200,"seq":["⚡","🔥","💀","👊","♾️"]},
-  {"id":28,"name":"لغز Infinity","category":"ذكاء","type":"quiz","cost":18,"reward":180,"q":"كم يساوي 10A في النظام العشري؟","a":"10","opts":["10","16","160","170"]},
-  {"id":29,"name":"سرعة بديهة","category":"ذكاء","type":"reaction","cost":10,"reward":90,"time":2},
-  {"id":30,"name":"عبقري الرياضيات","category":"ذكاء","type":"math","cost":25,"reward":300,"q":"99+1*0=?","a":"99"},
-
-  {"id":31,"name":"قتال السيف","category":"قتال","type":"battle","cost":15,"reward":150,"hp":100,"dmg":[10,30]},
-  {"id":32,"name":"ملاكمة الشوارع","category":"قتال","type":"battle","cost":20,"reward":200,"hp":120,"dmg":[15,35]},
-  {"id":33,"name":"نينجا الظل","category":"قتال","type":"battle","cost":25,"reward":250,"hp":80,"dmg":[20,50]},
-  {"id":34,"name":"زعيم الغابة","category":"قتال","type":"boss","cost":40,"reward":500,"hp":300,"dmg":[25,60]},
-  {"id":35,"name":"قتال الشرف","category":"قتال","type":"battle","cost":18,"reward":180,"hp":90,"dmg":[12,28]},
-  {"id":36,"name":"حلبة الموت","category":"قتال","type":"boss","cost":50,"reward":800,"hp":500,"dmg":[30,70]},
-  {"id":37,"name":"سيف الإمبراطور","category":"قتال","type":"battle","cost":30,"reward":350,"hp":150,"dmg":[25,45]},
-  {"id":38,"name":"قبضة التنين","category":"قتال","type":"battle","cost":22,"reward":220,"hp":110,"dmg":[18,38]},
-  {"id":39,"name":"آخر الرجال","category":"قتال","type":"boss","cost":60,"reward":1200,"hp":600,"dmg":[40,80]},
-  {"id":40,"name":"حرب Infinity","category":"قتال","type":"boss","cost":100,"reward":2000,"hp":1000,"dmg":[50,100]},
-
-  {"id":41,"name":"بنك الحظ","category":"اقتصاد","type":"invest","cost":50,"reward":500,"risk":0.3},
-  {"id":42,"name":"تجارة سريعة","category":"اقتصاد","type":"trade","cost":30,"reward":300,"multiplier":[0.5,3]},
-  {"id":43,"name":"كنز مدفون","category":"اقتصاد","type":"dig","cost":25,"reward":400,"tries":3},
-  {"id":44,"name":"بورصة Infinity","category":"اقتصاد","type":"invest","cost":100,"reward":1500,"risk":0.5},
-  {"id":45,"name":"صيد الكنوز","category":"اقتصاد","type":"dig","cost":40,"reward":600,"tries":5},
-  {"id":46,"name":"تاجر الإمبراطور","category":"اقتصاد","type":"trade","cost":60,"reward":800,"multiplier":[0.2,4]},
-  {"id":47,"name":"منجم الذهب","category":"اقتصاد","type":"dig","cost":80,"reward":1200,"tries":4},
-  {"id":48,"name":"رهان الملوك","category":"اقتصاد","type":"invest","cost":200,"reward":3000,"risk":0.6},
-  {"id":49,"name":"ثروة سريعة","category":"اقتصاد","type":"trade","cost":100,"reward":1500,"multiplier":[0,5]},
-  {"id":50,"name":"خزنة Infinity","category":"اقتصاد","type":"code","cost":150,"reward":5000,"code":"5823"}
+  {
+    "id": 1,
+    "name": "ضغط المكوك",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 10,
+    "reward": 10
+  },
+  {
+    "id": 2,
+    "name": "الضغط السريع",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 15,
+    "reward": 15
+  },
+  {
+    "id": 3,
+    "name": "اضغط للفوز",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 20,
+    "reward": 20
+  },
+  {
+    "id": 4,
+    "name": "مطرقة الرعد",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 25,
+    "reward": 25
+  },
+  {
+    "id": 5,
+    "name": "انفجار الضغط",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 30,
+    "reward": 30
+  },
+  {
+    "id": 6,
+    "name": "حجر ورقة مقص",
+    "category": "حظ",
+    "type": "rps",
+    "cost": 20,
+    "reward": 100
+  },
+  {
+    "id": 7,
+    "name": "النرد الذهبي",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 30,
+    "reward": 200
+  },
+  {
+    "id": 8,
+    "name": "عجلة الحظ",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 50,
+    "reward": 500
+  },
+  {
+    "id": 9,
+    "name": "الصندوق الغامض",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 25,
+    "reward": 300
+  },
+  {
+    "id": 10,
+    "name": "العملة المحظوظة",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 10,
+    "reward": 50
+  },
+  {
+    "id": 11,
+    "name": "سؤال سرعة 1",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 15,
+    "reward": 50,
+    "q": "عاصمة الجزائر؟",
+    "a": "الجزائر",
+    "opts": ["الجزائر", "وهران", "قسنطينة"]
+  },
+  {
+    "id": 12,
+    "name": "سؤال سرعة 2",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 15,
+    "reward": 50,
+    "q": "5 + 5 × 2 = ؟",
+    "a": "15",
+    "opts": ["20", "15", "10"]
+  },
+  {
+    "id": 13,
+    "name": "سؤال سرعة 3",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 15,
+    "reward": 50,
+    "q": "كم عدد قارات العالم؟",
+    "a": "7",
+    "opts": ["5", "6", "7"]
+  },
+  {
+    "id": 14,
+    "name": "سؤال سرعة 4",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 15,
+    "reward": 50,
+    "q": "أكبر كوكب في المجموعة الشمسية؟",
+    "a": "المشتري",
+    "opts": ["الأرض", "المشتري", "زحل"]
+  },
+  {
+    "id": 15,
+    "name": "سؤال سرعة 5",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 15,
+    "reward": 50,
+    "q": "كم عدد أيام الأسبوع؟",
+    "a": "7",
+    "opts": ["5", "6", "7"]
+  },
+  {
+    "id": 16,
+    "name": "قتال الزومبي",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 30,
+    "reward": 150
+  },
+  {
+    "id": 17,
+    "name": "معركة التنانين",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 40,
+    "reward": 200
+  },
+  {
+    "id": 18,
+    "name": "حرب النجوم",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 35,
+    "reward": 180
+  },
+  {
+    "id": 19,
+    "name": "مبارزة السيوف",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 25,
+    "reward": 120
+  },
+  {
+    "id": 20,
+    "name": "قبضة الحديد",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 50,
+    "reward": 300
+  },
+  {
+    "id": 21,
+    "name": "بنك الحظ",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 100,
+    "reward": 1000
+  },
+  {
+    "id": 22,
+    "name": "استثمار خطير",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 200,
+    "reward": 2000
+  },
+  {
+    "id": 23,
+    "name": "صفقة العمر",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 150,
+    "reward": 1500
+  },
+  {
+    "id": 24,
+    "name": "الكنز المدفون",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 80,
+    "reward": 800
+  },
+  {
+    "id": 25,
+    "name": "تجارة سريعة",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 60,
+    "reward": 600
+  },
+  {
+    "id": 26,
+    "name": "ضغط البرق",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 35,
+    "reward": 35
+  },
+  {
+    "id": 27,
+    "name": "ضغط الإعصار",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 40,
+    "reward": 40
+  },
+  {
+    "id": 28,
+    "name": "ضغط الزلزال",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 45,
+    "reward": 45
+  },
+  {
+    "id": 29,
+    "name": "ضغط البركان",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 50,
+    "reward": 50
+  },
+  {
+    "id": 30,
+    "name": "ضغط التسونامي",
+    "category": "ضغط",
+    "type": "clicker",
+    "cost": 60,
+    "reward": 60
+  },
+  {
+    "id": 31,
+    "name": "يانصيب الماس",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 100,
+    "reward": 1000
+  },
+  {
+    "id": 32,
+    "name": "يانصيب الذهب",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 80,
+    "reward": 800
+  },
+  {
+    "id": 33,
+    "name": "يانصيب الفضة",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 60,
+    "reward": 600
+  },
+  {
+    "id": 34,
+    "name": "يانصيب البرونز",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 40,
+    "reward": 400
+  },
+  {
+    "id": 35,
+    "name": "يانصيب الحديد",
+    "category": "حظ",
+    "type": "choice",
+    "cost": 20,
+    "reward": 200
+  },
+  {
+    "id": 36,
+    "name": "لغز سريع 1",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 20,
+    "reward": 80,
+    "q": "ما هو الشيء الذي يكبر كلما أخذت منه؟",
+    "a": "الحفرة",
+    "opts": ["الحفرة", "البالون", "الكعكة"]
+  },
+  {
+    "id": 37,
+    "name": "لغز سريع 2",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 20,
+    "reward": 80,
+    "q": "له عين ولا يرى؟",
+    "a": "الإبرة",
+    "opts": ["الإبرة", "الأعمى", "البطاطا"]
+  },
+  {
+    "id": 38,
+    "name": "لغز سريع 3",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 20,
+    "reward": 80,
+    "q": "يمشي بلا رجلين؟",
+    "a": "الساعة",
+    "opts": ["الساعة", "الثعبان", "السيارة"]
+  },
+  {
+    "id": 39,
+    "name": "لغز سريع 4",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 20,
+    "reward": 80,
+    "q": "بيت بلا أبواب؟",
+    "a": "بيت الشعر",
+    "opts": ["بيت الشعر", "القبر", "العش"]
+  },
+  {
+    "id": 40,
+    "name": "لغز سريع 5",
+    "category": "ذكاء",
+    "type": "quiz",
+    "cost": 20,
+    "reward": 80,
+    "q": "ما هو الشيء الذي إذا لمسته صاح؟",
+    "a": "الجرس",
+    "opts": ["الجرس", "القط", "الطفل"]
+  },
+  {
+    "id": 41,
+    "name": "قتال النينجا",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 45,
+    "reward": 250
+  },
+  {
+    "id": 42,
+    "name": "قتال الساموراي",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 55,
+    "reward": 300
+  },
+  {
+    "id": 43,
+    "name": "قتال الفايكنغ",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 60,
+    "reward": 350
+  },
+  {
+    "id": 44,
+    "name": "قتال المصارعين",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 70,
+    "reward": 400
+  },
+  {
+    "id": 45,
+    "name": "قتال العمالقة",
+    "category": "قتال",
+    "type": "rps",
+    "cost": 100,
+    "reward": 600
+  },
+  {
+    "id": 46,
+    "name": "مضاعفة الثروة",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 500,
+    "reward": 5000
+  },
+  {
+    "id": 47,
+    "name": "بورصة Dandlioni",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 300,
+    "reward": 3000
+  },
+  {
+    "id": 48,
+    "name": "شركة Infinity",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 250,
+    "reward": 2500
+  },
+  {
+    "id": 49,
+    "name": "تجارة النفط",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 400,
+    "reward": 4000
+  },
+  {
+    "id": 50,
+    "name": "منجم الألماس",
+    "category": "اقتصاد",
+    "type": "choice",
+    "cost": 1000,
+    "reward": 10000
+  }
     ]
