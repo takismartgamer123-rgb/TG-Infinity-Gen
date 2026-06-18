@@ -1,0 +1,16 @@
+{
+  "name": "dandlioni-10a-infinity",
+  "version": "5.0.0",
+  "type": "commonjs",
+  "main": "bot.js",
+  "engines": {
+    "node": "16.x"
+  },
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "0.61.0",
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
